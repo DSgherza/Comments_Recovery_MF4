@@ -8,7 +8,6 @@ import pandas as pd
 import os
 import threading
 from InputManagement import InputManagement
-from Overall import Overall
 import time
 import sys
 
@@ -193,10 +192,7 @@ def start_condition():
         mb.showerror("Error", "Please, select a folder for starting elaborations.")
         sys.exit()
     start_time = time.time()
-    damaged_files = []
     progress_counter = 0
-
-    mdf_input_reference = os.getcwd() + r'\signalList.xlsx'
     progress_bar_list = []
     for file in save_path:
         if file.endswith(".MF4") or file.endswith(".mf4") or file.endswith(".mdf") or file.endswith(".MDF"):
@@ -218,12 +214,9 @@ def start_condition():
                          label_relx= 0.49, label_rely= 0.68,
                          label_relheight= 0.05, label_relwidth= 0.55)
     progress_bar["value"] = 0
-    total_distance = 0
-    total_control_distance = 0
-    cont = 0
+    filename_list = []
+    comments_list = []
     for file in save_path:
-        check = True
-        check_control = True
         if progress_counter != 0:
             if file.endswith(".MF4") or file.endswith(".mf4") or file.endswith(".mdf") or file.endswith(".MDF"):
                 progress_bar["value"] += 1/len(progress_bar_list)*100
@@ -231,53 +224,15 @@ def start_condition():
         if file.endswith(".MF4") or file.endswith(".mf4") or file.endswith(".mdf") or file.endswith(".MDF"):
             progress_counter += 1
         if file.endswith(".MF4") or file.endswith(".mf4") or file.endswith(".mdf") or file.endswith(".MDF"):
-            try:
-                if cb.get() == 1:
-                    dictionaries = InputManagement(mdf_input_reference, file, frequency_value, frequency_value_let, ode_val, let_val, save_server_folder)
-                else:
-                    dictionaries = InputManagement(mdf_input_reference, file, frequency_value, frequency_value_let, ode_val, let_val)
-                try:
-                    speed = dictionaries.objectives["ReferenceSpeed"]/3.6
-                    cont += 1
-                except KeyError:
-                    check = False
-                    speed = None
-                try:
-                    speed_control = dictionaries.objectives["VehicleSpeed"]/3.6
-                except KeyError:
-                    check_control = False
-                    speed_control = None
-                try:
-                    satellites = dictionaries.objectives["Satellites"]
-                except KeyError:
-                    satellites = None
-                    pass
-                if check and check_control:
-                    distance, distance_control, cont = Overall.overall_distance(dictionaries.time_resampled, cont, speed = speed, control = speed_control, satellites = satellites)
-                if check and not check_control:
-                    distance, distance_control, cont = Overall.overall_distance(dictionaries.time_resampled, cont, speed = speed, satellites = satellites)
-                if check_control and not check:
-                    distance, distance_control, cont = Overall.overall_distance(dictionaries.time_resampled, cont, control = speed_control)
-                if not check and not check_control:
-                    distance = 0
-                    distance_control = 0
-                    print(file)
-                total_distance = total_distance + distance
-                total_control_distance = total_control_distance + distance_control
-            except:
-                damaged_files.append(file.split("/")[-1])
-                continue
-    total_distance = total_distance/1000
-    total_control_distance = total_control_distance/1000
+            dictionaries = InputManagement(file)
+            filename_list.append(dictionaries.log)
+            comments_list.append(dictionaries.comment) 
+    df = pd.DataFrame({"FileName": filename_list, "Comment": comments_list})
+    df.to_excel(saving_folder + "Comments.xlsx", index = False)
     progress_bar["value"] += 1/len(progress_bar_list)*100
     progress_bar_label.config(text = f"Calculation in progress: {int(round(progress_bar['value']))}%. {progress_counter}/{len(progress_bar_list)} files scanned.")
     progress_bar_label.config(text = f"{int(round(progress_bar['value']))}%. {progress_counter}/{len(progress_bar_list)} files scanned. Wait...output elaboration in progress.")
-    to_stamp = "\n".join(map(str, damaged_files))
-    if damaged_files != []:
-        mb.showinfo("Error occurred during elaborations", f"Errors have been detected during calculations. \nThe listed files are not included in the output file due to calculation errors:\n{to_stamp}")
     main_window.quit()
-    print(f"La distanza totale percorsa è {total_distance} km")
-    print(f"La distanza totale percorsa calcolata con VehSpd è {total_control_distance} km")
     print((time.time() - start_time)/60)
 
 def browse_button(display_folder):

@@ -136,108 +136,10 @@ class InputManagement:
         cont = cont + 1
         return vehicle, cont
 
-    def __init__(self, mdf_input_reference, filename, frequency, frequency_let, ode, let, server_folder = None):
-        self.objectives =  dict()
-        self.subjectives =  dict()
-        self.objectives_export =  dict()
-        self.subjectives_export =  dict()
-        self.signal_priority = dict()
-        self.times = {}
-        self.times_export = {}
-        self.benchmark = []
-        self.sperimental = []
-        vehicle_list = pd.read_excel(mdf_input_reference, header = 0, sheet_name = "Vehicle List")
-        vehicle_list["Build Nr"].fillna(0, inplace = True)
-        for i in range(len(vehicle_list["Vehicle Name"])):
-            if vehicle_list["Build Nr"][i] == 0:
-                self.benchmark.append(vehicle_list["Sheet Name"][i])
-            else:
-                self.sperimental.append(vehicle_list["Sheet Name"][i])
+    def __init__(self, filename):
         mdf_file = asammdf.MDF(filename)
-
-        day = mdf_file.header.start_time.day
-        month = mdf_file.header.start_time.month
-        year = mdf_file.header.start_time.year
-        self.date = str(year) + "_" + str(month) + "_" + str(day)
-        try:
-            weight = mdf_file.header._common_properties["Weight"]
-            if "GVW" in weight:
-                self.weight = "GVW"
-            else:
-                self.weight = "DOW"
-        except KeyError:
-            self.weight = ""
         self.log = filename.split("/")[-1]
-        if server_folder == None:
-            to_remove = self.log
-            self.link = filename.replace("/" + to_remove, "")
-            self.link = self.link.replace("/", "\\")
-        else:
-            self.link = server_folder
-            self.link = self.link.replace("/", "\\")
-        try:
-            self.vehicle = mdf_file.header._common_properties["Vehicle"]
-            self.vehicle_name, cont = self.get_vehicle_recognition(self.vehicle, vehicle_list)
-        except KeyError:
-            self.vehicle_name = "Standard_Vehicle"
-            cont = 9999
-            self.vehicle = "Standard_Vehicle"
-        if self.vehicle_name in self.benchmark or self.vehicle_name == "Standard_Vehicle":
-            self.build = ""
-        else:
-            try:
-                self.build = mdf_file.header._common_properties[vehicle_list["Build Nr"][cont]].split(" ")[0]
-            except KeyError:
-                self.build = ""
-        try:
-            self.front_tires = mdf_file.header._common_properties[vehicle_list["Front Tyres"][cont]]
-        except KeyError:
-            self.front_tires = ""
-        try:
-            self.rear_tires = mdf_file.header._common_properties[vehicle_list["Rear Tyres"][cont]]
-        except KeyError:
-            self.rear_tires = ""
-        mdf_input_name = pd.read_excel(mdf_input_reference, header = 0, sheet_name = self.vehicle_name)
-        signals_to_filter = self.get_to_filter(workbook = mdf_input_reference, vehicle = self.vehicle_name)
-        mdf_sources = mdf_input_name['Source']
-        mdf_signals = mdf_input_name['VariableName']
-        mdf_local_signals = mdf_input_name['SignalName']
-        correction = mdf_input_name['Correction Factor']
-        offset = mdf_input_name['Offset']
-        
-        signals_to_use, times_to_use = self.mdf_variable_names(mdf_file, sources = mdf_sources, signals = mdf_signals, local_signals = mdf_local_signals)
-        for i in range(len(correction)):
-            if correction[i] != 1:
-                signals_to_use[mdf_signals[i]]['data'] = correction[i]*signals_to_use[mdf_signals[i]]['data']
-            if offset[i] != 0:
-                signals_to_use[mdf_signals[i]]['data'] = signals_to_use[mdf_signals[i]]['data']+offset[i]
-        subjective_signals = self.get_subjective_signals(sources = mdf_sources, signals = mdf_signals)
-        
-        priority1, priority2, priority3, priority4, priority5 = self.get_priority(workbook= mdf_input_reference, vehicle= self.vehicle_name) 
-        self.signal_priority['Prio1'] = priority1
-        self.signal_priority['Prio2'] = priority2
-        self.signal_priority['Prio3'] = priority3
-        self.signal_priority['Prio4'] = priority4
-        self.signal_priority['Prio5'] = priority5
-        broken_channels, start_time = self.get_time_channel(times_to_use, signals_to_use, frequency, frequency_let, ode, let)
-        self.get_resampled_data(signals_to_use, subjective_signals, signals_to_filter, broken_channels, start_time, let, frequency_let)
-        self.target_speed = []
-        self.target_radius = []
         self.comment = mdf_file.header.description.replace("\n",". ")
-        if ode.get() == 1 or (let.get() == 1 and frequency_let.get() == "MAX"):
-            diadem = self.diadem_names(mdf_input_reference, self.vehicle_name, self.objectives, self.time_resampled)
-            if filename.endswith(".MF4"):
-                name = filename.replace(".MF4", ".txt")
-            if filename.endswith(".mf4"):
-                name = filename.replace(".mf4", ".txt")
-            diadem.to_csv(name)
-        elif let.get() == 1 and frequency_let.get() != "MAX":
-            diadem = self.diadem_names(mdf_input_reference, self.vehicle_name, self.objectives_export, self.time_resampled_export)
-            if filename.endswith(".MF4"):
-                name = filename.replace(".MF4", ".txt")
-            if filename.endswith(".mf4"):
-                name = filename.replace(".mf4", ".txt")
-            diadem.to_csv(name)
 
     def diadem_names(self, mdf_input_reference, vehicle_name, lola, times):
         diadem = {}
