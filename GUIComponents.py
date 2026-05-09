@@ -27,8 +27,3 @@ def get_entry(reference, entry_width, entry_relx, entry_rely,
      my_entry.insert(0, entry_initial_path)
      return my_entry
 
-def get_combobox(reference, combo_text, combo_width, combo_relx, combo_rely):
-     my_combobox= ttk.Combobox(reference, textvariable= combo_text, width=combo_width)
-     my_combobox.place(relx= combo_relx, rely= combo_rely, anchor="center")
-     return my_combobox
-
